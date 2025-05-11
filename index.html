@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voting Application</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen flex flex-col">
+  <!-- NAVBAR -->
+  <nav class="bg-gray-800 bg-opacity-50 backdrop-blur-md p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-white">Voting Application</h1>
+    <div class="space-x-4">
+      <a href="index.html" class="text-gray-300 hover:text-white">Home</a>
+      <a href="admin.html" class="text-gray-300 hover:text-white">Admin</a>
+      <button id="connectBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">Connect Wallet</button>
+    </div>
+  </nav>
+
+  <main class="flex-1 flex items-center justify-center p-4">
+    <div class="w-full max-w-3xl bg-gray-800 bg-opacity-60 backdrop-blur-md rounded-3xl p-8 space-y-8 shadow-2xl">
+      <!-- 1. Identity -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-semibold text-white">1. Your Identity</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input id="name" placeholder="Name" class="p-3 rounded-xl bg-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-400"/>
+          <input id="age"  type="number" placeholder="Age" class="p-3 rounded-xl bg-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-400"/>
+          <input id="email" type="email" placeholder="Email" class="p-3 rounded-xl bg-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-400"/>
+        </div>
+        <div class="flex space-x-4">
+          <button onclick="registerIdentity()" class="flex-1 bg-blue-600 hover:bg-blue-700 py-3 rounded-2xl font-medium shadow hover:scale-105 transition">Register</button>
+          <button onclick="updateIdentity()"  class="flex-1 bg-yellow-500 hover:bg-yellow-600 py-3 rounded-2xl font-medium shadow hover:scale-105 transition">Update</button>
+          <button onclick="getIdentity()"     class="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-2xl font-medium shadow hover:scale-105 transition">View</button>
+        </div>
+        <div id="identityCard" class="hidden bg-gray-700 p-4 rounded-2xl shadow-inner">
+          <p><strong>Name:</strong> <span id="displayName"></span></p>
+          <p><strong>Age:</strong>  <span id="displayAge"></span></p>
+          <p><strong>Email:</strong><span id="displayEmail"></span></p>
+        </div>
+      </section>
+
+      <!-- 2. Voting -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-semibold text-white">2. Cast Your Vote</h2>
+        <select id="candidateSelect" class="w-full p-3 rounded-xl bg-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-400">
+          <option value="">Loading…</option>
+        </select>
+        <button onclick="castVote()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3 rounded-2xl font-medium shadow hover:scale-105 transition">Vote Now</button>
+      </section>
+
+      <!-- Status -->
+      <p id="status" class="text-center text-gray-300 mt-4"></p>
+    </div>
+  </main>
+
+<script>
+  const contractAddress = "0xc17734221f966a1baa3278a64730be302510deea";
+  const contractABI     =[
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_candidate",
+				"type": "string"
+			}
+		],
+		"name": "castVote",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "name",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "age",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "email",
+				"type": "string"
+			}
+		],
+		"name": "IdentityRegistered",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "name",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "age",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "email",
+				"type": "string"
+			}
+		],
+		"name": "IdentityUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_name",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_age",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_email",
+				"type": "string"
+			}
+		],
+		"name": "registerIdentity",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_name",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_age",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_email",
+				"type": "string"
+			}
+		],
+		"name": "updateIdentity",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "voter",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "candidate",
+				"type": "string"
+			}
+		],
+		"name": "VoteCast",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "admin",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "candidateList",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getCandidates",
+		"outputs": [
+			{
+				"internalType": "string[]",
+				"name": "",
+				"type": "string[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_candidate",
+				"type": "string"
+			}
+		],
+		"name": "getVotes",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "identities",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "name",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "age",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "email",
+				"type": "string"
+			},
+			{
+				"internalType": "bool",
+				"name": "exists",
+				"type": "bool"
+			},
+			{
+				"internalType": "bool",
+				"name": "hasVoted",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"name": "votes",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "winner",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+  let web3, contract, account;
+
+  async function connectWallet() {
+    if (!window.ethereum) return setStatus("❌ Install MetaMask!");
+    web3 = new Web3(window.ethereum);
+    await ethereum.request({ method: 'eth_requestAccounts' });
+    [account] = await web3.eth.getAccounts();
+    document.getElementById("connectBtn").innerText = account.slice(0,6) + "…" + account.slice(-4);
+    contract = new web3.eth.Contract(contractABI, contractAddress);
+    loadCandidates();
+  }
+
+  async function loadCandidates() {
+    const cand = await contract.methods.getCandidates().call();
+    document.getElementById("candidateSelect").innerHTML =
+      cand.map(c => `<option value="${c}">${c}</option>`).join("");
+  }
+
+  function setStatus(txt) {
+    document.getElementById("status").innerText = txt;
+  }
+
+  async function registerIdentity() {
+    const [n,a,e] = ["name","age","email"].map(id=>document.getElementById(id).value);
+    if (!n||!a||!e) return setStatus("⚠️ Fill all fields.");
+    try {
+      await contract.methods.registerIdentity(n,a,e).send({ from: account });
+      setStatus("✅ Registered!");
+    } catch {
+      setStatus("❌ Registration failed.");
+    }
+  }
+
+  async function updateIdentity() {
+    const [n,a,e] = ["name","age","email"].map(id=>document.getElementById(id).value);
+    if (!n||!a||!e) return setStatus("⚠️ Fill all fields.");
+    try {
+      await contract.methods.updateIdentity(n,a,e).send({ from: account });
+      setStatus("✅ Updated!");
+    } catch {
+      setStatus("❌ Update failed.");
+    }
+  }
+
+  async function getIdentity() {
+    try {
+      const data = await contract.methods.identities(account).call();
+      if (!data.exists) return setStatus("⚠️ Not registered.");
+      ["Name","Age","Email"].forEach((f,i) =>
+        document.getElementById("display"+f).innerText = data[f.toLowerCase()]
+      );
+      document.getElementById("identityCard").classList.remove("hidden");
+      setStatus("📦 Identity loaded.");
+    } catch {
+      setStatus("❌ Fetch failed.");
+    }
+  }
+
+  async function castVote() {
+    const c = document.getElementById("candidateSelect").value;
+    if (!c) return setStatus("⚠️ Pick someone.");
+    try {
+      await contract.methods.castVote(c).send({ from: account });
+      setStatus("✅ Vote recorded!");
+    } catch {
+      setStatus("❌ You may have already voted.");
+    }
+  }
+
+  document.getElementById("connectBtn").onclick = connectWallet;
+</script>
+</body>
+</html>
